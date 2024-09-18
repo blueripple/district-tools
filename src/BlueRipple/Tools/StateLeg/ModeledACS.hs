@@ -3,6 +3,7 @@
 module BlueRipple.Tools.StateLeg.ModeledACS
   (
     modeledACSBySLD
+  , SLDKeyR
   ) where
 
 
