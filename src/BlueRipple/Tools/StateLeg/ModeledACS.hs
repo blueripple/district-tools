@@ -1,8 +1,10 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings #-}
 module BlueRipple.Tools.StateLeg.ModeledACS
   (
     modeledACSBySLD
+  , JointType(..)
   , SLDKeyR
   ) where
 
@@ -33,8 +35,11 @@ tsModelConfig :: Text -> Int -> DTM3.ModelConfig
 tsModelConfig modelId n =  DTM3.ModelConfig True (DTM3.dmr modelId n)
                            DTM3.AlphaHierNonCentered DTM3.ThetaSimple DTM3.NormalDist
 
-modeledACSBySLD :: forall r . (K.KnitEffects r, BRCC.CacheEffects r) => K.Sem r (K.ActionWithCacheTime r (DP.PSData SLDKeyR))
-modeledACSBySLD = do
+
+data JointType = Prod | Modeled deriving stock (Show, Eq)
+
+modeledACSBySLD :: forall r . (K.KnitEffects r, BRCC.CacheEffects r) => JointType -> K.Sem r (K.ActionWithCacheTime r (DP.PSData SLDKeyR))
+modeledACSBySLD jointType = do
   let (srcWindow, cachedSrc) = ACS.acs1Yr2012_22 @r
   (jointFromMarginalPredictorCSR_ASR_C, _) <- DDP.cachedACSa5ByPUMA  srcWindow cachedSrc 2022 -- most recent available
                                               >>= DMC.predictorModel3 @'[DT.CitizenC] @'[DT.Age5C] @DMC.SRCA @DMC.SR
@@ -52,12 +57,16 @@ modeledACSBySLD = do
                                                Nothing Nothing Nothing . fmap (fmap F.rcast)
   let optimalWeightsConfig = DTP.defaultOptimalWeightsAlgoConfig {DTP.owcMaxTimeM = Just 0.1, DTP.owcProbRelTolerance = 1e-4}
       optimalWeightsLogStyle = DTP.OWKLogLevel K.Diagnostic
-  (acsCASERBySLD, _products) <- BRC.censusTablesForSLDs 2024 BRC.TY2022
+  (acsCASERBySLD, products) <- BRC.censusTablesForSLDs 2024 BRC.TY2022
                                 >>= DMC.predictedCensusCASER' DMC.stateAbbrFromFIPS
                                 DMS.GMDensity
                                 (DTP.viaOptimalWeights optimalWeightsConfig optimalWeightsLogStyle DTP.euclideanFull)
                                 (Right "model/stateLeg2024/sldDemographics")
                                 jointFromMarginalPredictorCSR_ASR_C
                                 jointFromMarginalPredictorCASR_ASE_C
-  BRCC.retrieveOrMakeD "model/stateLeg2024/data/sld2024_ACS2022_PSData.bin" acsCASERBySLD
+  let outputCK t = "model/stateLeg2024/data/sld2024_ACS2022_" <> t <> "PSData.bin"
+      (ck, tables_C) = case jointType of
+        Prod -> (outputCK "products", products)
+        Modeled -> (outputCK "modeled", acsCASERBySLD)
+  BRCC.retrieveOrMakeD ck tables_C
     $ \x -> DP.PSData . fmap F.rcast <$> (BRL.addStateAbbrUsingFIPS $ F.filterFrame ((== DT.Citizen) . view DT.citizenC) x)
