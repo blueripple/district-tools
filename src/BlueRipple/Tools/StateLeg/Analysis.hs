@@ -22,6 +22,7 @@ import qualified BlueRipple.Data.DistrictOverlaps as DO
 --import qualified BlueRipple.Data.ACS_Tables_Loaders as BRC
 import qualified BlueRipple.Data.ACS_Tables as BRC
 import qualified BlueRipple.Data.Small.DataFrames as BSD
+import qualified BlueRipple.Data.LoadersCore as BRLC
 
 --import qualified BlueRipple.Data.Types.Demographic as DT
 import qualified BlueRipple.Data.Types.Geographic as GT
@@ -132,12 +133,14 @@ modelC jointType tc tScenarioM pc pScenarioM sa = do
       psDataForState sa' = DP.PSData . F.filterFrame ((== sa') . view GT.stateAbbreviation) . DP.unPSData
   modeledACSBySLDPSData_C <- MACS.modeledACSBySLD jointType
   let stateSLDs_C = fmap (psDataForState sa) modeledACSBySLDPSData_C
+--  K.ignoreCacheTime stateSLDs_C >>= BRLC.logFrame . F.takeRows 100 . DP.unPSData
+
   presidentialElections_C <- BRS.presidentialElectionsWithIncumbency
   draShareOverrides_C <- DP.loadOverrides (BLR.draDataPath <> "DRA_Shares/DRA_Share.csv") "DRA 2016-2021"
   let dVSPres2020 = DP.ElexTargetConfig "PresWO" draShareOverrides_C 2020 presidentialElections_C
       dVSModel psName
         = MR.runFullModelAH @MACS.SLDKeyR 2020 (cacheStructure sa psName) tc tScenarioM pc pScenarioM (MR.VoteDTargets dVSPres2020)
-  dVSModel (sa <> "_SLD") stateSLDs_C
+  dVSModel (sa <> "_" <> show jointType <> "_SLD") stateSLDs_C
 
 analyzeStateGaba :: (K.KnitEffects r, BRCC.CacheEffects r)
                  => MACS.JointType
