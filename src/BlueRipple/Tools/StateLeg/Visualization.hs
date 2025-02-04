@@ -22,7 +22,7 @@ import qualified Graphics.Vega.VegaLite.JSON as VJ
 import qualified Frames as F
 import qualified Frames.Constraints as FC
 import qualified Control.Foldl as FL
-import Control.Lens (view, (^.))
+import Control.Lens ((^.))
 
 import qualified Knit.Report as K
 
@@ -37,7 +37,7 @@ modelDRAComparisonChart :: (K.KnitEffects r
                         -> Text -> Text -> FV.ViewConfig
                         -> Text -> [LabeledFrame Text rs]
                         -> K.Sem r GV.VegaLite
-modelDRAComparisonChart pp pi chartID title vc labelName labeledRows = do
+modelDRAComparisonChart pp pi' chartID title vc labelName labeledRows = do
   let colData t r = [ (labelName, GV.Str t)
                     , ("State", GV.Str $ r ^. GT.stateAbbreviation)
                     , ("District", GV.Str $ show (r ^. GT.districtTypeC) <> "-" <> r ^. GT.districtName)
@@ -49,7 +49,7 @@ modelDRAComparisonChart pp pi chartID title vc labelName labeledRows = do
       lfToRows (LabeledFrame t rows) = fmap (colData t) $ FL.fold FL.list rows
       jsonRows = FL.fold (VJ.rowsToJSON' lfToRows [] Nothing) labeledRows
   jsonFilePrefix <- K.getNextUnusedId $ ("2023-StateLeg_" <> chartID)
-  jsonUrl <-  BRK.brAddJSON pp pi jsonFilePrefix jsonRows
+  jsonUrl <-  BRK.brAddJSON pp pi' jsonFilePrefix jsonRows
   let vlData = GV.dataFromUrl jsonUrl [GV.JSON "values"]
       encHistorical = GV.position GV.X [GV.PName "Historical", GV.PmType GV.Quantitative,  GV.PScale [GV.SZero False]]
       encModel = GV.position GV.Y [GV.PName "Model", GV.PmType GV.Quantitative,  GV.PScale [GV.SZero False]]

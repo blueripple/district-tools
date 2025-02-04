@@ -1,9 +1,11 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings #-}
 module BlueRipple.Tools.StateLeg.ModeledACS
   (
     modeledACSBySLD
+  , acsBySLDJointTableCompare
   , JointType(..)
   , SLDKeyR
   ) where
@@ -26,8 +28,17 @@ import qualified BlueRipple.Data.CachingCore as BRCC
 import qualified Knit.Report as K
 
 import qualified Frames as F
+--import qualified Frames.Serialize as FS
+import qualified Frames.Streamly.InCore as FSI
+import qualified Frames.Misc as FM
+import qualified Frames.Constraints as FC
 import qualified Data.Vinyl.TypeLevel as V
+
+import qualified Control.Foldl as FL
+import qualified Frames.MapReduce as FMR
 import Control.Lens (view)
+
+--import qualified Data.Map.Strict as M
 
 type SLDKeyR = '[GT.StateAbbreviation] V.++ BRC.LDLocationR
 
@@ -50,7 +61,7 @@ modeledACSBySLD jointType = do
                                               Nothing Nothing Nothing . fmap (fmap F.rcast)
   (jointFromMarginalPredictorCASR_ASE_C, _) <- DDP.cachedACSa5ByPUMA srcWindow cachedSrc 2022 -- most recent available
                                                >>= DMC.predictorModel3 @[DT.CitizenC, DT.Race5C] @'[DT.Education4C] @DMC.ASCRE @DMC.AS
-                                               (Right "CASR_SER_ByPUMA")
+                                               (Right "CASR_ASE_ByPUMA")
                                                (Right "model/demographic/casr_ase_PUMA")
                                                (DTM3.Model $ tsModelConfig "CASR_ASE_ByPUMA" 141)
                                                False -- do not whiten
@@ -70,3 +81,26 @@ modeledACSBySLD jointType = do
         Modeled -> (outputCK "modeled", acsCASERBySLD)
   BRCC.retrieveOrMakeD ck tables_C
     $ \x -> DP.PSData . fmap F.rcast <$> (BRL.addStateAbbrUsingFIPS $ F.filterFrame ((== DT.Citizen) . view DT.citizenC) x)
+
+
+acsTablePopAndPWD :: forall ks . (Ord (F.Record ks)
+                                 , ks F.⊆ DP.PSDataR ks
+                                 , FC.ElemsOf (DP.PSDataR ks) '[DT.PopCount, DT.PWPopPerSqMile]
+                                 , FSI.RecVec (ks V.++ [DT.PopCount, DT.PWPopPerSqMile])
+                                 )
+                  => (F.Record ks -> Bool) -> FL.Fold (F.Record (DP.PSDataR ks)) (F.FrameRec (ks V.++ [DT.PopCount, DT.PWPopPerSqMile]))
+acsTablePopAndPWD f = FMR.concatFold
+                      $ FMR.mapReduceFold
+                      (FMR.unpackFilterRow $ f . F.rcast)
+                      (FMR.assignKeysAndData @ks @[DT.PopCount, DT.PWPopPerSqMile])
+                      (FMR.foldAndAddKey $ DT.pwDensityAndPopFldRec DT.Geometric)
+
+acsBySLDJointTableCompare :: (K.KnitEffects r, BRCC.CacheEffects r) => (F.Record SLDKeyR -> Bool) -> K.Sem r ()
+acsBySLDJointTableCompare f = do
+  prod <- DP.unPSData <$> (K.ignoreCacheTimeM $ modeledACSBySLD Prod)
+  modeled <- DP.unPSData <$> (K.ignoreCacheTimeM $ modeledACSBySLD Modeled)
+  let popAndPWD = FL.fold (acsTablePopAndPWD @SLDKeyR f)
+      merge k lPP rPP = (k, lPP, rPP)
+  merged <- K.knitEither $ FM.mapMergeFramesE @SLDKeyR merge show "products" "modeled" (popAndPWD prod) (popAndPWD modeled)
+  K.logLE K.Info $ show merged
+  pure ()

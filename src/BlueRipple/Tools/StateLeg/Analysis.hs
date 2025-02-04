@@ -11,7 +11,7 @@ where
 
 import qualified BlueRipple.Tools.StateLeg.ModeledACS as MACS
 import BlueRipple.Tools.StateLeg.ModeledACS (JointType(..))
-import qualified BlueRipple.Data.Small.Loaders as BDL
+--import qualified BlueRipple.Data.Small.Loaders as BDL
 import qualified BlueRipple.Model.CategorizeElection as CE
 import qualified BlueRipple.Model.Election2.ModelRunner as MR
 import qualified BlueRipple.Model.Election2.ModelCommon as MC
@@ -22,7 +22,7 @@ import qualified BlueRipple.Data.DistrictOverlaps as DO
 --import qualified BlueRipple.Data.ACS_Tables_Loaders as BRC
 import qualified BlueRipple.Data.ACS_Tables as BRC
 import qualified BlueRipple.Data.Small.DataFrames as BSD
-import qualified BlueRipple.Data.LoadersCore as BRLC
+--import qualified BlueRipple.Data.LoadersCore as BRLC
 
 --import qualified BlueRipple.Data.Types.Demographic as DT
 import qualified BlueRipple.Data.Types.Geographic as GT
@@ -69,7 +69,7 @@ modelAndDRA :: K.KnitEffects r
             -> Map Text Bool
             -> Text
             -> K.Sem r (F.FrameRec ModelDRA_R)
-modelAndDRA modeled draSLD upperOnlyMap singleCDMap sa = do
+modelAndDRA modeled draSLD _upperOnlyMap _singleCDMap sa = do
   let draSLD_forState = F.filterFrame ((== sa) . view GT.stateAbbreviation) draSLD
       (modeledAndDRA, missingModelDRA)
           = FJ.leftJoinWithMissing @[GT.StateAbbreviation, GT.DistrictTypeC, GT.DistrictName] (modeledMapToFrame modeled) draSLD_forState
@@ -99,14 +99,14 @@ modelAndDRAWithOverlaps :: (K.KnitEffects r, BRCC.CacheEffects r)
                         -> Map Text Bool
                         -> Text
                         -> K.Sem r (F.FrameRec ModelDRAOverlap_R)
-modelAndDRAWithOverlaps modelAndDRA draCD upperOnlyMap singleCDMap sa = do
+modelAndDRAWithOverlaps modelAndDRA' draCD upperOnlyMap singleCDMap sa = do
   let draCDPPLMap = FL.fold (FL.premap (\r -> (r ^. GT.districtName, r ^. ET.demShare )) FL.map)
                     $ F.filterFrame ((== sa) . view GT.stateAbbreviation) draCD
   maxOverlapsM <- fmap (>>= DO.maxSLD_CDOverlaps) $ DO.sldCDOverlaps upperOnlyMap singleCDMap 2024 BRC.TY2021 sa
   case maxOverlapsM of
     Just maxOverlaps -> do
       let (withOverlaps, missingOverlaps)
-            = FJ.leftJoinWithMissing @[GT.DistrictTypeC, GT.DistrictName] modelAndDRA maxOverlaps
+            = FJ.leftJoinWithMissing @[GT.DistrictTypeC, GT.DistrictName] modelAndDRA' maxOverlaps
       when (not $ null missingOverlaps) $ K.knitError $ "br-Gaba: Missing keys in modeledDVs+dra/overlaps join: " <> show missingOverlaps
       let cd r = r ^. GT.congressionalDistrict
           omCD = FT.recordSingleton @CD . FOM.Present . cd
@@ -115,7 +115,7 @@ modelAndDRAWithOverlaps modelAndDRA draCD upperOnlyMap singleCDMap sa = do
       pure $ fmap (F.rcast . addBoth) withOverlaps
     Nothing -> do
       let overlapCols :: F.Record [DO.Overlap, CD, CDPPL] = 1 F.&: FOM.Missing F.&: FOM.Missing F.&: V.RNil
-          withOverlaps = FT.mutate (const overlapCols) <$> modelAndDRA
+          withOverlaps = FT.mutate (const overlapCols) <$> modelAndDRA'
       pure withOverlaps
 
 modelC :: (K.KnitEffects r, BRCC.CacheEffects r)

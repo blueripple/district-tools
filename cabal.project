@@ -1,4 +1,4 @@
-packages: ./ ../../libs/model-election2
+packages: ./ ../../libs/model-election2 ../../libs/model-demographic
 jobs: 4
 with-compiler: ghc
 
@@ -19,7 +19,7 @@ import: ../../libs/cabal_repo_imports/data-ACS-Tables.project
 import: ../../libs/cabal_repo_imports/data-ACS-PUMS.project
 import: ../../libs/cabal_repo_imports/data-CES.project
 import: ../../libs/cabal_repo_imports/data-CPS-VS.project
-import: ../../libs/cabal_repo_imports/model-demographic.project
+--import: ../../libs/cabal_repo_imports/model-demographic.project
 --import: ../../libs/cabal_repo_imports/model-election2.project
 import: ../../libs/cabal_repo_imports/model-tools.project
 import: ../../libs/cabal_repo_imports/haskell-stan.project
