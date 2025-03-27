@@ -1,8 +1,9 @@
 cabal-version: 3.0
 
-name:           blueripple-tools-stateleg
+
+name:           blueripple-district-tools
 version:        0.1.0.0
-synopsis:       tools for analyzing stateleg districts
+synopsis:       tools for analyzing stateleg/congressional districts
 category:       Data
 homepage:       https://github.com/blueripple/tools-stateleg#readme
 bug-reports:    https://github.com/blueripple/tools-stateleg/issues
@@ -20,6 +21,7 @@ library
   exposed-modules: BlueRipple.Tools.StateLeg.ModeledACS
                  , BlueRipple.Tools.StateLeg.Analysis
                  , BlueRipple.Tools.StateLeg.Visualization
+                 , BlueRipple.Tools.CD.Analysis
   hs-source-dirs: src
   ghc-options: -Wall -O2 -fno-warn-unused-top-binds -funbox-strict-fields
   build-depends:
