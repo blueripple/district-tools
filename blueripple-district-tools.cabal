@@ -5,8 +5,8 @@ name:           blueripple-district-tools
 version:        0.1.0.0
 synopsis:       tools for analyzing stateleg/congressional districts
 category:       Data
-homepage:       https://github.com/blueripple/tools-stateleg#readme
-bug-reports:    https://github.com/blueripple/tools-stateleg/issues
+homepage:       https://github.com/blueripple/district-tools#readme
+bug-reports:    https://github.com/blueripple/district-tools/issues
 author:         Adam Conner-Sax
 maintainer:     adam@blueripplepolitics.org
 copyright:      2024 Adam Conner-Sax
@@ -15,7 +15,7 @@ build-type:     Simple
 
 source-repository head
   type: git
-  location: https://github.com/blueripple/tools-stateleg
+  location: https://github.com/blueripple/district-tools
 
 library
   exposed-modules: BlueRipple.Tools.StateLeg.ModeledACS
@@ -83,6 +83,6 @@ library
    , streamly-bytestring >=0.2.0 && < 0.3
 
   mixins:  base hiding (Prelude)
-         , relude (Relude as Prelude
-         , Relude.Extra)
+         , relude (Relude as Prelude)
+         , relude
   default-language: GHC2021

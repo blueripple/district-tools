@@ -2,7 +2,7 @@ packages: ./
 jobs: 4
 with-compiler: ghc
 
-allow-newer: base, ghc-prim, bytestring, hashable, profunctors, time, primitive, vector, template-haskell, containers
+allow-newer: base, ghc-prim, bytestring, hashable, profunctors, time, primitive, vector, template-haskell, containers, polysemy-zoo:constraints, lens
 
 flags: +streamly9
 
@@ -36,3 +36,4 @@ import: ../../libs/cabal_repo_imports/map-reduce-folds.project
 import: ../../libs/cabal_repo_imports/Frames-map-reduce.project
 import: ../../libs/cabal_repo_imports/heidi.project
 import: ../../libs/cabal_repo_imports/polysemy-randomFu.project
+import: ../../libs/cabal_repo_imports/dependent-hashmap.project
