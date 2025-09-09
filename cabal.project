@@ -2,7 +2,13 @@ packages: ./
 jobs: 4
 with-compiler: ghc
 
-allow-newer: base, ghc-prim, bytestring, hashable, profunctors, time, primitive, vector, template-haskell, containers, polysemy-zoo:constraints, lens
+allow-newer: base, ghc-prim, bytestring, time, primitive, containers, constraints
+           , freer-simple:template-haskell
+           , polysemy-zoo:text
+           , foldl-statistics:hashable, foldl-statistics:profunctors
+           , cereal-time:time
+           , pipes-text:text
+           , nonlinear-optimization:vector
 
 flags: +streamly9
 
